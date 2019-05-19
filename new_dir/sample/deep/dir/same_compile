@@ -1,0 +1,54 @@
+#!/bin/sh
+
+check_hash() { # xxsum, file, hash
+	[ ! -e "$2" ] && return 9
+	[ "`$1 "$2" | grep -o -E '^[[:alnum:]]+'`" = "$3" ]
+}
+
+profile_d(){
+	mkdir -vp `dirname $1`
+	cat << EOF > "$1"
+	export PATH="\$PATH:${2}"
+EOF
+}
+
+ffmpeg_download() {
+	local BUILD_DIR=$1
+	local CACHE_DIR=$2
+	local ZIP_URL=https://johnvansickle.com/ffmpeg/builds/ffmpeg-git-amd64-static.tar.xz
+	local ZIP_HASH=f7ce2ba7305f668262c2e05e7973673b
+	local ZIP_HASH_FUNC=md5sum
+	local ZIP_BASE_NAME=ffmpeg-release-amd64-static
+	local ZIP_CACHE=$CACHE_DIR/$ZIP_BASE_NAME.tar.xz
+	local ZIP_OPT_DIR="$BUILD_DIR/ffmpeg"
+	echo "       Installing $ZIP_URL"
+	mkdir -pv "$BUILD_DIR"
+	mkdir -pv "$CACHE_DIR"
+	mkdir -pv "$ZIP_OPT_DIR"
+	check_hash $ZIP_HASH_FUNC "$ZIP_CACHE" $ZIP_HASH
+	if [ $? != 0 ]; then
+		echo "       Downloading to $ZIP_CACHE"
+		curl -L --silent -o "$ZIP_CACHE" "$ZIP_URL"
+	fi
+	if [ ! -e "$ZIP_CACHE" ] ; then
+		echo "       No $ZIP_CACHE"
+	elif [ ! -e "$ZIP_OPT_DIR" ] ; then
+		echo "       No $ZIP_OPT_DIR"
+	else
+		echo "       Extracting to $ZIP_OPT_DIR"
+	fi
+	# tar xJf "$ZIP_CACHE" --strip-components=1 -C "$ZIP_OPT_DIR"
+	tar xJf "$ZIP_CACHE" --strip-components=1 -C "$ZIP_OPT_DIR" --wildcards "ffmpeg-git-*/ffmpeg"  "ffmpeg-git-*/ffprobe"
+}
+
+
+echo "-----> Install ffmpeg"
+BUILD_DIR=$1
+CACHE_DIR=$2
+# BUILD_DIR=/tmp/x/b
+# CACHE_DIR=/tmp/x/c
+
+ffmpeg_download "$BUILD_DIR/.opt" "$CACHE_DIR"
+profile_d "$BUILD_DIR/.profile.d/ffmpeg-Yc9Oh1.sh" '$HOME/.opt/ffmpeg'
+
+# ls -lAR /tmp/a
